@@ -1,0 +1,6 @@
+{
+  "name": "GKSAAR Creator Studio",
+  "description": "Admin web panel for the GKSAAR mobile app to publish news, manage Firebase sync, and use AI for story and YouTube transcript batch processing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
