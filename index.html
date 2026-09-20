@@ -1,21 +1,819 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="hi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GKSAAR Creator Studio</title>
-    <meta name="description" content="Admin web panel for the GKSAAR mobile app to publish news, manage Firebase sync, and use AI for story and YouTube transcript batch processing." />
-    <meta property="og:title" content="GKSAAR Creator Studio" />
-    <meta property="og:description" content="Admin web panel for the GKSAAR mobile app to publish news, manage Firebase sync, and use AI for story and YouTube transcript batch processing." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-[#FAF7F2] text-[#1F2937] antialiased selection:bg-[#1E3A8A] selection:text-white font-sans">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKSAAR News Creator & Publisher - Admin Panel</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Rozha+One&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            hindiTitle: ['"Rozha One"', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .toast-anim {
+      animation: slideIn 0.3s ease forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
 
+  <!-- TOP HEADER NAVBAR -->
+  <header class="bg-[#1E3A8A] text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-white text-[#1E3A8A] flex items-center justify-center font-black text-xl shadow-sm">
+          GK
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight leading-none">
+            GKSAAR Creator Studio
+          </h1>
+          <p class="text-[11px] text-blue-200 mt-0.5">
+            Android App News Publisher (Single File Edition)
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-2">
+        <button id="btnOpenConfig" class="px-3 py-1.5 rounded-lg bg-blue-800 hover:bg-blue-700 text-xs font-semibold flex items-center space-x-1.5 transition border border-blue-600">
+          <span>⚙️</span>
+          <span class="hidden sm:inline">Firebase सेटिंग्स</span>
+        </button>
+        <button id="btnTogglePreview" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center space-x-1.5 transition border border-white/20">
+          <span>📱</span>
+          <span class="hidden sm:inline">मोबाइल प्रीव्यू</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- FIREBASE STATUS BAR -->
+  <div class="bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs text-blue-900">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <span id="fbStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block animate-pulse"></span>
+        <span id="fbStatusText" class="font-medium">Firebase स्थिति: लोकल मोड (कॉन्फ़िगरेशन सेट करें)</span>
+      </div>
+      <div class="text-[11px] text-blue-700">
+        कलेक्शन: <code class="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono font-bold" id="lblCollection">news_stories</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: CREATOR FORM & PUBLISHED LIST (7 COLS) -->
+    <div id="leftColumn" class="lg:col-span-7 space-y-6">
+
+      <!-- NEWS CREATOR CARD -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">✍️</span>
+            <div>
+              <h2 class="text-base font-bold text-slate-800">नया समाचार बनाएं (GKSAAR Format)</h2>
+              <p class="text-xs text-slate-500">Android ऐप के कार्ड लेआउट के अनुसार</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="btnLoadSample" class="text-xs font-bold text-[#1E3A8A] hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition flex items-center space-x-1">
+              <span>✨</span>
+              <span>स्क्रीनशॉट नमूना भरें</span>
+            </button>
+            <button id="btnClearForm" class="text-xs font-semibold text-slate-500 hover:text-red-600 px-2 py-1.5 transition">
+              रीसेट
+            </button>
+          </div>
+        </div>
+
+        <!-- GUIDANCE NOTICE -->
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 mb-5 flex items-start space-x-2">
+          <span class="text-base shrink-0">💡</span>
+          <div class="leading-relaxed">
+            <strong>स्क्रीन ओवरफ्लो से बचाव:</strong> मोबाइल का पूरा पेज टेक्स्ट से न भरे, इसलिए शीर्षक को <strong>1-2 वाक्य</strong> और विस्तृत जानकारी को <strong>केवल 1 संक्षिप्त पैराग्राफ (40-60 शब्द)</strong> रखें।
+          </div>
+        </div>
+
+        <!-- FORM -->
+        <form id="newsForm" class="space-y-4">
+          <!-- 1. QUOTE TITLE -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-bold text-slate-800">
+                1. मुख्य पंक्ति / उद्धरण (Quote Title) <span class="text-red-500">*</span>
+              </label>
+              <span id="titleCharCount" class="text-[11px] text-slate-400">0 अक्षर</span>
+            </div>
+            <textarea
+              id="txtTitle"
+              rows="2"
+              placeholder='"अमेरिकी कांग्रेस द्वारा पारित 100% टैरिफ कानून के बावजूद विदेश मंत्रालय ने ऊर्जा खरीद को राष्ट्रीय हित के अधीन बताया है।"'
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 outline-none transition font-medium"
+              required
+            ></textarea>
+            <p class="text-[11px] text-slate-400 mt-1">मोबाइल में पीले बॉक्स 💡 में दिखता है (डबल कोट्स "..." में)</p>
+          </div>
+
+          <!-- 2. DETAILS -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-bold text-[#1E3A8A] flex items-center space-x-1">
+                <span>📋 2. विस्तृत जानकारी (Details - केवल 1 संक्षिप्त पैराग्राफ)</span>
+                <span class="text-red-500">*</span>
+              </label>
+              <span id="detailsWordCount" class="text-[11px] text-slate-500 font-medium">0 शब्द</span>
+            </div>
+            <textarea
+              id="txtDetails"
+              rows="4"
+              placeholder="भारत अपने 140 करोड़ नागरिकों की ऊर्जा जरूरतों को पूरा करने के लिए स्रोतों का विविधीकरण जारी रखेगा। विदेश मंत्रालय के अनुसार, ऊर्जा सुरक्षा पर निर्णय किसी बाहरी दबाव के बजाय देश की आर्थिक स्थिरता पर आधारित होंगे। 📌 Related: Energy Security 2026"
+              class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 outline-none transition font-normal leading-relaxed resize-y"
+              required
+            ></textarea>
+            <p class="text-[11px] text-slate-400 mt-1">सुझाव: 40 से 60 शब्द रखें। अंत में <strong>📌 Related: [विषय]</strong> जोड़ें।</p>
+          </div>
+
+          <!-- GRID: TOPIC & CATEGORY -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- 3. RELATED TOPIC (BLUE PILL) -->
+            <div>
+              <label class="block text-xs font-bold text-slate-800 mb-1">
+                ⚛️ 3. संबंधित विषय (Related Topic)
+              </label>
+              <input
+                type="text"
+                id="txtTopic"
+                placeholder="अमेरिकी कानून और भारत की ऊर्जा सुरक्षा"
+                class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 outline-none transition"
+              />
+              <p class="text-[10px] text-slate-400 mt-1">मोबाइल में नीले पिल (Pill) में दिखता है</p>
+            </div>
+
+            <!-- 4. CATEGORY (GREEN PILL) -->
+            <div>
+              <label class="block text-xs font-bold text-slate-800 mb-1">
+                📅 4. कैटेगरी (Category)
+              </label>
+              <input
+                type="text"
+                id="txtCategory"
+                value="POLICY"
+                placeholder="POLICY, SCIENCE, SPORTS..."
+                class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 outline-none transition font-semibold uppercase"
+              />
+              <!-- QUICK CHIPS -->
+              <div class="flex flex-wrap gap-1 mt-1.5">
+                <button type="button" onclick="setCategory('POLICY')" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200">POLICY</button>
+                <button type="button" onclick="setCategory('SCIENCE')" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200">SCIENCE</button>
+                <button type="button" onclick="setCategory('SPORTS')" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200">SPORTS</button>
+                <button type="button" onclick="setCategory('NATIONAL')" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200">NATIONAL</button>
+                <button type="button" onclick="setCategory('ECONOMY')" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200">ECONOMY</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. SOURCE LINK -->
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              🔗 स्रोत लिंक (वैकल्पिक)
+            </label>
+            <input
+              type="url"
+              id="txtSource"
+              placeholder="https://pib.gov.in या https://isro.gov.in"
+              class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20 outline-none transition"
+            />
+          </div>
+
+          <!-- SUBMIT BUTTON -->
+          <div class="pt-2">
+            <button
+              type="submit"
+              id="btnPublish"
+              class="w-full py-3 px-4 rounded-xl bg-[#1E3A8A] hover:bg-[#172554] active:scale-[0.99] text-white font-bold text-sm shadow-md transition flex items-center justify-center space-x-2"
+            >
+              <span>🚀</span>
+              <span>खबर पब्लिश करें (Firestore Sync)</span>
+            </button>
+            <p class="text-[11px] text-slate-400 text-center mt-2">
+              यह सीधे आपके Firestore के <code class="font-mono font-semibold text-slate-600">news_stories</code> कलेक्शन में 10-अंकीय ID के साथ सेव होगा।
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <!-- PUBLISHED NEWS LIST CARD -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">📰</span>
+            <h3 class="text-base font-bold text-slate-800">हाल ही में प्रकाशित खबरें</h3>
+          </div>
+          <button id="btnRefreshList" class="text-xs font-semibold text-[#1E3A8A] hover:underline flex items-center space-x-1">
+            <span>🔄</span>
+            <span>रिफ्रेश</span>
+          </button>
+        </div>
+
+        <div id="publishedList" class="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+          <div class="p-8 text-center text-slate-400 text-sm">लोड हो रहा है...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: ANDROID MOBILE PREVIEW (5 COLS) -->
+    <div id="rightColumn" class="lg:col-span-5 flex flex-col items-center">
+      <div class="sticky top-20 w-full max-w-[380px]">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <span class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center space-x-1">
+            <span>📱</span>
+            <span>Android Live Preview</span>
+          </span>
+          <span class="text-[10px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">
+            GKSAAR Layout
+          </span>
+        </div>
+
+        <!-- PHONE FRAME -->
+        <div class="bg-slate-900 rounded-[38px] p-3 shadow-2xl border-4 border-slate-800">
+          <!-- PHONE SPEAKER & CAMERA -->
+          <div class="w-full flex justify-center items-center py-1 mb-1">
+            <div class="w-16 h-1 bg-slate-700 rounded-full"></div>
+            <div class="w-2.5 h-2.5 bg-slate-800 rounded-full ml-2"></div>
+          </div>
+
+          <!-- PHONE SCREEN (100% GKSAAR APP LAYOUT) -->
+          <div class="bg-[#f4f7fb] rounded-[28px] overflow-hidden flex flex-col h-[610px] select-none shadow-inner">
+            
+            <!-- APP HEADER -->
+            <div class="bg-white px-4 py-2.5 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div class="flex items-center space-x-2">
+                <span class="text-slate-500 text-sm">◀</span>
+                <span class="font-extrabold text-[#1E3A8A] text-sm tracking-wide">GKSAAR HINDI</span>
+              </div>
+              <div class="flex items-center space-x-3 text-slate-500 text-xs">
+                <span>🔄</span>
+                <span>🛡️</span>
+              </div>
+            </div>
+
+            <!-- CARD BODY -->
+            <div class="flex-1 p-3.5 overflow-y-auto custom-scrollbar flex flex-col justify-between space-y-3">
+              
+              <div class="space-y-3">
+                <!-- 1. QUOTE CARD (YELLOW BOX) -->
+                <div class="bg-[#FEFCE8] border border-[#FEF08A] rounded-2xl p-3.5 shadow-sm">
+                  <div class="flex items-start space-x-2">
+                    <span class="text-base text-amber-600 shrink-0 mt-0.5">💡</span>
+                    <p id="prevTitle" class="text-xs font-bold text-slate-800 leading-relaxed">
+                      "अमेरिकी कांग्रेस द्वारा पारित 100% टैरिफ कानून के बावजूद विदेश मंत्रालय ने ऊर्जा खरीद को राष्ट्रीय हित के अधीन बताया है।"
+                    </p>
+                  </div>
+                </div>
+
+                <!-- 2. DETAILED INFORMATION (विस्तृत जानकारी) -->
+                <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2">
+                  <div class="flex items-center space-x-1.5 pb-1 border-b border-slate-100">
+                    <span class="text-xs text-[#1E3A8A]">📋</span>
+                    <h4 class="text-xs font-bold text-slate-800">विस्तृत जानकारी</h4>
+                  </div>
+                  <p id="prevDetails" class="text-xs text-slate-700 leading-relaxed font-normal">
+                    भारत अपने 140 करोड़ नागरिकों की ऊर्जा जरूरतों को पूरा करने के लिए स्रोतों का विविधीकरण जारी रखेगा। विदेश मंत्रालय के अनुसार, ऊर्जा सुरक्षा पर निर्णय किसी बाहरी दबाव के बजाय देश की आर्थिक स्थिरता पर आधारित होंगे। 📌 Related: Energy Security 2026
+                  </p>
+                </div>
+              </div>
+
+              <!-- 3. BOTTOM CAPSULES (Pills) -->
+              <div class="space-y-2 pt-2">
+                <!-- BLUE PILL: RELATED TOPIC -->
+                <div class="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl px-3 py-2 flex items-center space-x-2 text-xs text-[#1E3A8A]">
+                  <span class="text-sm shrink-0">⚛️</span>
+                  <div class="truncate">
+                    <span class="font-bold">संबंधित: </span>
+                    <span id="prevTopic" class="font-medium">अमेरिकी कानून और भारत की ऊर्जा सुरक्षा</span>
+                  </div>
+                </div>
+
+                <!-- GREEN PILL: DATE & CATEGORY -->
+                <div class="bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-3 py-2 flex items-center space-x-2 text-xs text-emerald-800">
+                  <span class="text-sm shrink-0">📅</span>
+                  <div class="truncate font-semibold">
+                    <span id="prevDate">20 सित॰ 2026</span> • <span id="prevCategory">POLICY</span>
+                  </div>
+                </div>
+
+                <!-- SOURCE LINK PILL -->
+                <div id="prevSourceBox" class="text-[11px] text-slate-400 text-center truncate pt-0.5 hidden">
+                  <span>स्रोत: </span><span id="prevSource" class="underline"></span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- APP BOTTOM NAVIGATION BAR -->
+            <div class="bg-white px-6 py-2 border-t border-slate-200 flex items-center justify-between text-slate-400 text-xs shrink-0">
+              <div class="flex flex-col items-center text-[#1E3A8A]">
+                <span>🏠</span>
+                <span class="text-[9px] font-bold">होम</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <span>📑</span>
+                <span class="text-[9px]">कैटेगरी</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <span>🔖</span>
+                <span class="text-[9px]">सेव्ड</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <span>⚙️</span>
+                <span class="text-[9px]">सेटिंग्स</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- PHONE HOME INDICATOR BAR -->
+          <div class="w-full flex justify-center pt-2">
+            <div class="w-28 h-1 bg-slate-600 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FIREBASE SETTINGS MODAL -->
+  <div id="configModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+          <span>⚙️</span>
+          <span>Firebase कनेक्शन सेटिंग्स</span>
+        </h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-500 leading-relaxed">
+        अपने Firebase Console (<code class="bg-slate-100 px-1 py-0.5 rounded">console.firebase.google.com</code>) के Project Settings > Web App से ये मान भरें:
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Project ID</label>
+          <input type="text" id="cfgProjectId" placeholder="उदा: gksaar-news-app" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:border-[#1E3A8A]">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">API Key</label>
+          <input type="text" id="cfgApiKey" placeholder="उदा: AIzaSy..." class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:border-[#1E3A8A]">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">App ID</label>
+          <input type="text" id="cfgAppId" placeholder="उदा: 1:123456789:web:abcdef" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:border-[#1E3A8A]">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Firestore Collection Name</label>
+          <input type="text" id="cfgCollection" value="news_stories" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:border-[#1E3A8A] font-mono">
+          <p class="text-[10px] text-slate-400 mt-0.5">डिफ़ॉल्ट: <code class="font-bold">news_stories</code> (Android ऐप का कलेक्शन)</p>
+        </div>
+      </div>
+
+      <div class="pt-3 flex items-center justify-end space-x-2 border-t">
+        <button id="btnCancelConfig" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">रद्द करें</button>
+        <button id="btnSaveConfig" class="px-4 py-2 text-xs font-bold text-white bg-[#1E3A8A] hover:bg-blue-900 rounded-lg">सेव करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC (FIREBASE SDK & APP ENGINE) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const KEY_CONFIG = "gksaar_fb_cfg";
+    const KEY_LOCAL_NEWS = "gksaar_local_stories";
+
+    const DEFAULT_NEWS = [
+      {
+        id: "-1019728490",
+        title: '"अमेरिकी कांग्रेस द्वारा पारित 100% टैरिफ कानून के बावजूद विदेश मंत्रालय ने ऊर्जा खरीद को राष्ट्रीय हित के अधीन बताया है।"',
+        category: "POLICY",
+        relatedTopic: "अमेरिकी कानून और भारत की ऊर्जा सुरक्षा",
+        relatedWord: "POLICY",
+        points: [
+          "भारत अपने 140 करोड़ नागरिकों की ऊर्जा जरूरतों को पूरा करने के लिए स्रोतों का विविधीकरण जारी रखेगा। विदेश मंत्रालय के अनुसार, ऊर्जा सुरक्षा पर निर्णय किसी बाहरी दबाव के बजाय देश की आर्थिक स्थिरता पर आधारित होंगे। 📌 Related: Energy Security 2026"
+        ],
+        sourceLink: "",
+        timestamp: Date.now() - 3600000 * 2,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "-1019728491",
+        title: '"चंद्रयान-4 मिशन: चंद्रमा की सतह से नमूने वापस लाने के लिए केंद्रीय मंत्रिमंडल ने 2104 करोड़ रुपये की वित्तीय स्वीकृति दी।"',
+        category: "SCIENCE",
+        relatedTopic: "चंद्रयान-4 और अंतरिक्ष विज्ञान",
+        relatedWord: "SCIENCE",
+        points: [
+          "मिशन का प्राथमिक उद्देश्य चंद्रमा की सतह पर उतरना और चंद्र मिट्टी के नमूने एकत्र कर सुरक्षित पृथ्वी पर वापस लाना है। यह मिशन 2027 तक लॉन्च किया जाएगा जो भारतीय अंतरिक्ष स्टेशन के लिए मील का पत्थर साबित होगा। 📌 Related: Space Exploration 2026"
+        ],
+        sourceLink: "https://isro.gov.in",
+        timestamp: Date.now() - 3600000 * 12,
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    let fbApp = null;
+    let fbDb = null;
+    let fbConfig = {
+      projectId: "",
+      apiKey: "",
+      appId: "",
+      collectionName: "news_stories"
+    };
+    let newsList = [];
+
+    const txtTitle = document.getElementById("txtTitle");
+    const txtDetails = document.getElementById("txtDetails");
+    const txtTopic = document.getElementById("txtTopic");
+    const txtCategory = document.getElementById("txtCategory");
+    const txtSource = document.getElementById("txtSource");
+    const titleCharCount = document.getElementById("titleCharCount");
+    const detailsWordCount = document.getElementById("detailsWordCount");
+
+    const prevTitle = document.getElementById("prevTitle");
+    const prevDetails = document.getElementById("prevDetails");
+    const prevTopic = document.getElementById("prevTopic");
+    const prevCategory = document.getElementById("prevCategory");
+    const prevDate = document.getElementById("prevDate");
+    const prevSourceBox = document.getElementById("prevSourceBox");
+    const prevSource = document.getElementById("prevSource");
+
+    function showToast(msg, type = "info") {
+      const c = document.getElementById("toastContainer");
+      const el = document.createElement("div");
+      el.className = `toast-anim pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white flex items-center space-x-2 ${
+        type === "success" ? "bg-emerald-600" : type === "error" ? "bg-red-600" : type === "warning" ? "bg-amber-600" : "bg-slate-800"
+      }`;
+      el.innerHTML = `<span>${type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}</span><span>${msg}</span>`;
+      c.appendChild(el);
+      setTimeout(() => { el.remove(); }, 3500);
+    }
+
+    function generateDocId(title, ts = Date.now()) {
+      let hash = 0;
+      const str = `${title.trim()}_${ts}`;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      const num = (Math.abs(hash) % 1147483647) + 1000000000;
+      return `-${num}`;
+    }
+
+    function mapCategoryToWord(cat) {
+      const c = (cat || "").toLowerCase();
+      if (c.includes("policy") || c.includes("नीति")) return "POLICY";
+      if (c.includes("science") || c.includes("विज्ञान")) return "SCIENCE";
+      if (c.includes("sport") || c.includes("खेल")) return "SPORTS";
+      if (c.includes("national") || c.includes("राष्ट्रीय")) return "NATIONAL";
+      if (c.includes("economy") || c.includes("अर्थ")) return "ECONOMY";
+      return cat.trim().toUpperCase().replace(/[^A-Z]/g, "") || "NATIONAL";
+    }
+
+    function formatHindiDate(ts = Date.now()) {
+      const d = new Date(ts);
+      const months = ["जन॰", "फर॰", "मार्च", "अप्रै॰", "मई", "जून", "जुल॰", "अग॰", "सित॰", "अक्टू॰", "नव॰", "दिस॰"];
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    function updateLivePreview() {
+      const t = txtTitle.value.trim() || '"अमेरिकी कांग्रेस द्वारा पारित 100% टैरिफ कानून के बावजूद..."';
+      const d = txtDetails.value.trim() || 'भारत अपने 140 करोड़ नागरिकों की ऊर्जा जरूरतों को पूरा करने के लिए स्रोतों का विविधीकरण जारी रखेगा...';
+      const top = txtTopic.value.trim() || 'अमेरिकी कानून और भारत की ऊर्जा सुरक्षा';
+      const cat = txtCategory.value.trim() || 'POLICY';
+      const src = txtSource.value.trim();
+
+      prevTitle.textContent = t.startsWith('"') ? t : `"${t}"`;
+      prevDetails.textContent = d;
+      prevTopic.textContent = top;
+      prevCategory.textContent = cat.toUpperCase();
+      prevDate.textContent = formatHindiDate();
+
+      if (src) {
+        prevSourceBox.classList.remove("hidden");
+        prevSource.textContent = src;
+      } else {
+        prevSourceBox.classList.add("hidden");
+      }
+
+      titleCharCount.textContent = `${txtTitle.value.length} अक्षर`;
+      const words = txtDetails.value.trim() ? txtDetails.value.trim().split(/\s+/).length : 0;
+      detailsWordCount.textContent = `${words} शब्द`;
+    }
+
+    window.setCategory = function(cat) {
+      txtCategory.value = cat;
+      updateLivePreview();
+    };
+
+    function loadConfig() {
+      try {
+        const saved = localStorage.getItem(KEY_CONFIG);
+        if (saved) fbConfig = JSON.parse(saved);
+      } catch (e) {}
+
+      document.getElementById("cfgProjectId").value = fbConfig.projectId || "";
+      document.getElementById("cfgApiKey").value = fbConfig.apiKey || "";
+      document.getElementById("cfgAppId").value = fbConfig.appId || "";
+      document.getElementById("cfgCollection").value = fbConfig.collectionName || "news_stories";
+      document.getElementById("lblCollection").textContent = fbConfig.collectionName || "news_stories";
+
+      initFirebase();
+    }
+
+    function initFirebase() {
+      const statusDot = document.getElementById("fbStatusDot");
+      const statusText = document.getElementById("fbStatusText");
+
+      if (fbConfig.projectId && fbConfig.apiKey) {
+        try {
+          fbApp = initializeApp({
+            apiKey: fbConfig.apiKey,
+            projectId: fbConfig.projectId,
+            appId: fbConfig.appId
+          });
+          fbDb = getFirestore(fbApp);
+          statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block";
+          statusText.textContent = `Firebase लाइव जुड़ा हुआ है: ${fbConfig.projectId} (${fbConfig.collectionName})`;
+          loadFirestoreNews();
+          return;
+        } catch (e) {
+          console.warn("Firebase Init warning:", e);
+        }
+      }
+
+      statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 inline-block";
+      statusText.textContent = "Firebase स्थिति: लोकल मोड (कॉन्फ़िगरेशन सेटिंग्स पर क्लिक करके क्रेडेंशियल्स डालें)";
+      loadLocalNews();
+    }
+
+    function loadLocalNews() {
+      try {
+        const saved = localStorage.getItem(KEY_LOCAL_NEWS);
+        newsList = saved ? JSON.parse(saved) : DEFAULT_NEWS;
+      } catch (e) {
+        newsList = DEFAULT_NEWS;
+      }
+      renderNewsList();
+    }
+
+    async function loadFirestoreNews() {
+      if (!fbDb) return loadLocalNews();
+      try {
+        const snap = await getDocs(collection(fbDb, fbConfig.collectionName || "news_stories"));
+        const items = [];
+        snap.forEach(d => {
+          const data = d.data();
+          items.push({
+            id: d.id,
+            title: data.title || "",
+            category: data.category || (data.relatedWord || "POLICY"),
+            relatedTopic: data.relatedTopic || data.category || "",
+            relatedWord: data.relatedWord || "POLICY",
+            points: Array.isArray(data.points) ? data.points : [data.details || ""],
+            timestamp: data.timestamp || Date.now()
+          });
+        });
+        if (items.length > 0) {
+          newsList = items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        } else {
+          loadLocalNews();
+        }
+      } catch (e) {
+        console.warn("Could not load from Firestore, using local fallback", e);
+        loadLocalNews();
+      }
+      renderNewsList();
+    }
+
+    function renderNewsList() {
+      const container = document.getElementById("publishedList");
+      if (!newsList || newsList.length === 0) {
+        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs">कोई समाचार उपलब्ध नहीं है।</div>';
+        return;
+      }
+
+      container.innerHTML = newsList.map(item => `
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-xs transition space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-1.5 overflow-hidden">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                ${item.category || item.relatedWord || 'POLICY'}
+              </span>
+              ${item.relatedTopic ? `
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-[#1E3A8A] truncate max-w-[160px]">
+                  ⚛️ ${item.relatedTopic}
+                </span>
+              ` : ''}
+              <span class="text-[10px] font-mono text-slate-400">ID: ${item.id}</span>
+            </div>
+            <button onclick="window.deleteStory('${item.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold p-1">
+              🗑️
+            </button>
+          </div>
+          <h4 class="text-xs font-bold text-slate-800 leading-snug line-clamp-2">${item.title}</h4>
+          <p class="text-[11px] text-slate-600 line-clamp-2">${item.points ? item.points.join(' ') : ''}</p>
+        </div>
+      `).join('');
+    }
+
+    window.deleteStory = async function(id) {
+      if (!confirm("क्या आप वाकई इस समाचार को हटाना चाहते हैं?")) return;
+      if (fbDb) {
+        try {
+          await deleteDoc(doc(fbDb, fbConfig.collectionName || "news_stories", id));
+          showToast("Firestore से समाचार हटाया गया!", "success");
+        } catch (e) {
+          console.warn("Delete error:", e);
+        }
+      }
+      newsList = newsList.filter(n => n.id !== id);
+      localStorage.setItem(KEY_LOCAL_NEWS, JSON.stringify(newsList));
+      renderNewsList();
+    };
+
+    document.getElementById("newsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      let title = txtTitle.value.trim();
+      const details = txtDetails.value.trim();
+      const topic = txtTopic.value.trim() || "सामान्य";
+      const category = txtCategory.value.trim().toUpperCase() || "POLICY";
+      const source = txtSource.value.trim();
+
+      if (!title || !details) {
+        showToast("कृपया शीर्षक और विस्तृत जानकारी दोनों भरें।", "error");
+        return;
+      }
+
+      if (!title.startsWith('"') && !title.startsWith('“')) {
+        title = `"${title}"`;
+      }
+
+      const timestamp = Date.now();
+      const docId = generateDocId(title, timestamp);
+      const relatedWord = mapCategoryToWord(category);
+
+      const exactDoc = {
+        customGenerated: true,
+        englishPointsJson: null,
+        englishTitle: null,
+        pointsJson: JSON.stringify([`*${details}`]),
+        relatedWord: relatedWord,
+        saved: false,
+        timestamp: timestamp,
+        title: title,
+        relatedTopic: topic,
+        category: category,
+        points: [details],
+        sourceLink: source,
+        createdAt: new Date().toISOString(),
+        publishedBy: "GKSAAR Web Creator Studio"
+      };
+
+      const btnPublish = document.getElementById("btnPublish");
+      btnPublish.disabled = true;
+      btnPublish.innerHTML = `<span>⏳</span><span>पब्लिश हो रहा है...</span>`;
+
+      try {
+        let synced = false;
+        if (fbDb) {
+          try {
+            await setDoc(doc(fbDb, fbConfig.collectionName || "news_stories", docId), exactDoc);
+            synced = true;
+          } catch (fbErr) {
+            console.warn("Firestore error, saving locally:", fbErr);
+          }
+        }
+
+        const newItem = { id: docId, ...exactDoc };
+        newsList.unshift(newItem);
+        localStorage.setItem(KEY_LOCAL_NEWS, JSON.stringify(newsList));
+        renderNewsList();
+
+        if (synced) {
+          showToast(`🚀 समाचार Firestore में सुरक्षित पब्लिश हुआ! ID: ${docId}`, "success");
+        } else {
+          showToast(`✨ समाचार लोकल मोड में सहेजा गया! (Firestore सिंक नहीं हुआ)`, "info");
+        }
+
+        txtTitle.value = "";
+        txtDetails.value = "";
+        txtTopic.value = "";
+        txtSource.value = "";
+        updateLivePreview();
+
+      } catch (err) {
+        showToast(`त्रुटि: ${err.message}`, "error");
+      } finally {
+        btnPublish.disabled = false;
+        btnPublish.innerHTML = `<span>🚀</span><span>खबर पब्लिश करें (Firestore Sync)</span>`;
+      }
+    });
+
+    document.getElementById("btnLoadSample").addEventListener("click", () => {
+      txtTitle.value = '"अमेरिकी कांग्रेस द्वारा पारित 100% टैरिफ कानून के बावजूद विदेश मंत्रालय ने ऊर्जा खरीद को राष्ट्रीय हित के अधीन बताया है।"';
+      txtDetails.value = 'भारत अपने 140 करोड़ नागरिकों की ऊर्जा जरूरतों को पूरा करने के लिए स्रोतों का विविधीकरण जारी रखेगा। विदेश मंत्रालय के अनुसार, ऊर्जा सुरक्षा पर निर्णय किसी बाहरी दबाव के बजाय देश की आर्थिक स्थिरता पर आधारित होंगे। यह नीति भारत-अमेरिका द्विपक्षीय संबंधों के भविष्य को प्रभावित कर सकती है। 📌 Related: Energy Security 2026';
+      txtTopic.value = 'अमेरिकी कानून और भारत की ऊर्जा सुरक्षा';
+      txtCategory.value = 'POLICY';
+      txtSource.value = '';
+      updateLivePreview();
+      showToast("स्क्रीनशॉट नमूना लोड किया गया!", "info");
+    });
+
+    document.getElementById("btnClearForm").addEventListener("click", () => {
+      txtTitle.value = "";
+      txtDetails.value = "";
+      txtTopic.value = "";
+      txtCategory.value = "POLICY";
+      txtSource.value = "";
+      updateLivePreview();
+    });
+
+    document.getElementById("btnRefreshList").addEventListener("click", () => {
+      if (fbDb) loadFirestoreNews();
+      else loadLocalNews();
+      showToast("सूची रिफ्रेश की गई!", "info");
+    });
+
+    [txtTitle, txtDetails, txtTopic, txtCategory, txtSource].forEach(el => {
+      el.addEventListener("input", updateLivePreview);
+    });
+
+    const configModal = document.getElementById("configModal");
+    document.getElementById("btnOpenConfig").addEventListener("click", () => configModal.classList.remove("hidden"));
+    document.getElementById("btnCloseModal").addEventListener("click", () => configModal.classList.add("hidden"));
+    document.getElementById("btnCancelConfig").addEventListener("click", () => configModal.classList.add("hidden"));
+
+    document.getElementById("btnSaveConfig").addEventListener("click", () => {
+      fbConfig = {
+        projectId: document.getElementById("cfgProjectId").value.trim(),
+        apiKey: document.getElementById("cfgApiKey").value.trim(),
+        appId: document.getElementById("cfgAppId").value.trim(),
+        collectionName: document.getElementById("cfgCollection").value.trim() || "news_stories"
+      };
+      localStorage.setItem(KEY_CONFIG, JSON.stringify(fbConfig));
+      configModal.classList.add("hidden");
+      document.getElementById("lblCollection").textContent = fbConfig.collectionName;
+      initFirebase();
+      showToast("Firebase सेटिंग्स सुरक्षित कर ली गईं!", "success");
+    });
+
+    const btnToggle = document.getElementById("btnTogglePreview");
+    const rightCol = document.getElementById("rightColumn");
+    btnToggle.addEventListener("click", () => {
+      rightCol.classList.toggle("hidden");
+    });
+
+    loadConfig();
+    updateLivePreview();
+  </script>
+</body>
+</html>
